@@ -1,0 +1,64 @@
+name: Backport pull request
+description: Automatically backports pull requests to specified branches based on labels
+inputs:
+  user:
+    description: Fork user when pull request branch will be created.
+    required: true
+  token:
+    description: Token that allows to push to the fork (user) repository.
+    required: true
+  pattern:
+    description: Regular expression to match branch name in label.
+    default: ^backport-to-(.*)
+    required: false
+runs:
+  using: 'composite'
+  steps:
+  - name: Backport pull request
+    shell: bash
+    env:
+      GITHUB_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
+      PR_ID: ${{ github.event.pull_request.number }}
+      USER: ${{ inputs.user }}
+      GH_TOKEN: ${{ inputs.token }}
+      PATTERN: ${{ inputs.pattern }}
+      ACTION: ${{ github.event.action }}
+      ALL_LABELS: ${{ toJSON(github.event.pull_request.labels) }}
+    run: |
+      set -e -o pipefail
+
+      case "$ACTION" in
+          "closed")
+              labels=`echo "$ALL_LABELS" | jq -r '.[].name'`
+              ;;
+          "labeled")
+              labels="${{ github.event.label.name }}"
+              ;;
+          *)
+            echo "Unexpected action: $ACTION"
+            exit 1
+            ;;
+      esac
+
+      branch_names=""
+      for label in $labels; do
+        if [[ $label =~ $PATTERN ]]; then
+          branch_names+="${BASH_REMATCH[1]} "
+        fi
+      done
+
+      if [ -z "$branch_names" ]; then
+        echo "No backport requested."
+        exit 0
+      fi
+
+      echo "Starting automatic backport to following branches:"
+      for branch in $branch_names; do
+        echo "- $branch"
+      done
+      echo ""
+
+      for branch in $branch_names; do
+        echo "Backporting to $branch"
+        "${{ github.action_path }}/backport.sh" "$GITHUB_REPOSITORY" "$PR_ID" "$branch" "$USER" "$GH_TOKEN"
+      done
