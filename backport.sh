@@ -85,8 +85,13 @@ for commit in $PR_COMMITS_SHA; do
         echo "Conflicts detected, while cherry-picking $commit"
         git add --all
 
-        # Override the editor so we can run git cherry-pick --continue non-interactively
-        GIT_EDITOR="$scriptdir/conflict-editor.sh" git cherry-pick --continue
+        # Override the merge message
+        merge_msg_path=".git/MERGE_MSG"
+        merge_msg=`cat "$merge_msg_path"`
+        echo "CONFLICT! $merge_msg" > "$merge_msg_path"
+
+        # Make sure to disable the interactive editor
+        GIT_EDITOR=/usr/bin/true git cherry-pick --continue
     fi
 done
 
