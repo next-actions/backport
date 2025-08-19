@@ -27,6 +27,8 @@ PR_BODY=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json body --jq .body`
 PR_AUTHOR=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json author --jq .author.login`
 PR_REVIEWERS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json reviewRequests --jq .reviewRequests.[].login`
 PR_ASSIGNEES=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json assignees --jq .assignees.[].login`
+PR_COMMITS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json commits --jq '.commits.[] | "* \(.oid) - \(.messageHeadline)"'`
+PR_COMMITS_SHA=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json commits --jq .commits.[].oid`
 BASE_BRANCH=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json baseRefName --jq .baseRefName`
 BACKPORT_BRANCH_NAME="$OWNER-$REPOSITORY-backport-pr$PR_ID-to-$TARGET"
 COMMIT_MESSAGE_TEMPLATE="$scriptdir/pr-msg-ok.md"
@@ -39,6 +41,8 @@ echo "Assignees: `echo $PR_ASSIGNEES | tr '\n' ' '`"
 echo "Reviewers: `echo $PR_REVIEWERS | tr '\n' ' '`"
 echo "Base Branch: $BASE_BRANCH"
 echo "Requesting Backport To: $TARGET"
+echo "Commits:"
+echo "$PR_COMMITS"
 echo ""
 echo "Action Directory: $scriptdir"
 echo "Working Directory: $wd"
@@ -65,15 +69,12 @@ gh pr checkout -b "original_pr" "$PR_ID"
 git config user.name "next-actions/backport"
 git config user.email "notavailable"
 
-# Find commits from the pull request, print it first, then store the hashes
-commits_sha=`git log --format="%H" --reverse $BASE_BRANCH..original_pr`
-
 # Create new branch that we will work on
 git checkout -b "$BACKPORT_BRANCH_NAME" "$TARGET"
 
 # Apply cherry-picks even if there is a conflict
 has_conflict=0
-for commit in $commits_sha; do
+for commit in $PR_COMMITS_SHA; do
     set +e
     git cherry-pick --allow-empty --allow-empty-message --empty=keep -x "$commit"
     ret=$?
@@ -93,9 +94,8 @@ done
 git push --set-upstream "$FORK_USER" "$BACKPORT_BRANCH_NAME" --force
 
 # Prepare pull request message
-ORIGINAL_COMMITS=`git log --format="* %H - %s" --reverse $BASE_BRANCH..original_pr`
 BACKPORT_COMMITS=`git log --format="* %H - %s" --reverse $TARGET..$BACKPORT_BRANCH_NAME`
-envlist='$PR_ID,$PR_URL,$PR_TITLE,$PR_URL,$PR_BODY,$PR_AUTHOR,$TARGET,$FORK_USER,$BACKPORT_BRANCH_NAME,$ORIGINAL_COMMITS,$BACKPORT_COMMITS'
+envlist='$PR_ID,$PR_URL,$PR_TITLE,$PR_URL,$PR_BODY,$PR_AUTHOR,$PR_COMMITS,$TARGET,$FORK_USER,$BACKPORT_BRANCH_NAME,$BACKPORT_COMMITS'
 
 export PR_ID
 export PR_URL
@@ -103,10 +103,10 @@ export PR_TITLE
 export PR_URL
 export PR_BODY
 export PR_AUTHOR
+export PR_COMMITS
 export TARGET
 export FORK_USER
 export BACKPORT_BRANCH_NAME
-export ORIGINAL_COMMITS
 export BACKPORT_COMMITS
 envsubst $envlist < $COMMIT_MESSAGE_TEMPLATE > .backport-commit-message
 
