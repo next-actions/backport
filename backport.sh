@@ -25,7 +25,7 @@ PR_URL="https://github.com/$OWNER/$REPOSITORY/pull/$PR_ID"
 PR_TITLE=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json title --jq .title`
 PR_BODY=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json body --jq .body`
 PR_AUTHOR=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json author --jq .author.login`
-PR_REVIEWERS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json reviewRequests --jq .reviewRequests.[].login`
+PR_REVIEWERS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json reviews --jq '.reviews.[] | select(.state == "APPROVED") | .author.login' | sort | uniq`
 PR_ASSIGNEES=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json assignees --jq .assignees.[].login`
 PR_COMMITS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json commits --jq '.commits.[] | "* \(.oid) - \(.messageHeadline)"'`
 PR_COMMITS_SHA=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json commits --jq .commits.[].oid`
