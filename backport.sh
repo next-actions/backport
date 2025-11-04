@@ -117,8 +117,8 @@ envsubst $envlist < $COMMIT_MESSAGE_TEMPLATE > .backport-commit-message
 
 # Add assignees and reviewers
 pr_create_args=""
-pr_create_args+=`echo $PR_ASSIGNEES | xargs -I{} echo -n "--assignee {} "`
-pr_create_args+=`echo $PR_REVIEWERS | xargs -I{} echo -n "--reviewer {} "`
+pr_create_args+=`echo $PR_ASSIGNEES | tr ' ' '\n' | xargs -I{} echo -n "--assignee {} "`
+pr_create_args+=`echo $PR_REVIEWERS | tr ' ' '\n' | xargs -I{} echo -n "--reviewer {} "`
 if [ "$has_conflict" -eq 1 ]; then
     pr_create_args+="--draft "
 fi
