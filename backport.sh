@@ -62,8 +62,9 @@ fi
 git clone "https://github.com/$OWNER/$REPOSITORY.git" .
 git remote add "$FORK_USER" "https://$FORK_USER:$FORK_TOKEN@github.com/$FORK_USER/$REPOSITORY.git"
 git checkout "$TARGET"
+git fetch origin "refs/pull/$PR_ID/head:original_pr"
+git checkout original_pr
 gh repo set-default "$GITHUB_REPOSITORY"
-gh pr checkout -b "original_pr" "$PR_ID"
 
 # Set git identity
 git config user.name "next-actions/backport"
