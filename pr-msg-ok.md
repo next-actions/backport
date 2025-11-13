@@ -17,7 +17,7 @@ git push $FORK_USER $BACKPORT_BRANCH_NAME
 ---
 
 **Original commits**
-$PR_COMMITS
+$MERGE_COMMITS
 
 **Backported commits**
 $BACKPORT_COMMITS

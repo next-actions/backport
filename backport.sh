@@ -28,10 +28,16 @@ PR_AUTHOR=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json author --jq .a
 PR_REVIEWERS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json reviews --jq '.reviews.[] | select(.state == "APPROVED") | .author.login' | sort | uniq`
 PR_ASSIGNEES=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json assignees --jq .assignees.[].login`
 PR_COMMITS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json commits --jq '.commits.[] | "* \(.oid) - \(.messageHeadline)"'`
-PR_COMMITS_SHA=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json commits --jq .commits.[].oid`
+PR_COMMITS_COUNT=`echo "$PR_COMMITS" | wc -l`
+PR_MERGE_COMMIT=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json mergeCommit --jq '.mergeCommit.oid'`
 BASE_BRANCH=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json baseRefName --jq .baseRefName`
 BACKPORT_BRANCH_NAME="$OWNER-$REPOSITORY-backport-pr$PR_ID-to-$TARGET"
 COMMIT_MESSAGE_TEMPLATE="$scriptdir/pr-msg-ok.md"
+
+# Information about the merged commits, SHA may be different from PR
+# This is obtain after cloning the git repository
+MERGE_COMMITS=
+MERGE_COMMITS_SHA=
 
 echo "GitHub Repository: $OWNER/$REPOSITORY"
 echo "GitHub Pull Request: $PR_URL"
@@ -41,7 +47,8 @@ echo "Assignees: `echo $PR_ASSIGNEES | tr '\n' ' '`"
 echo "Reviewers: `echo $PR_REVIEWERS | tr '\n' ' '`"
 echo "Base Branch: $BASE_BRANCH"
 echo "Requesting Backport To: $TARGET"
-echo "Commits:"
+echo "Merge Commit: $PR_MERGE_COMMIT"
+echo "Pull Request Commits:"
 echo "$PR_COMMITS"
 echo ""
 echo "Action Directory: $scriptdir"
@@ -61,10 +68,20 @@ fi
 # Clone repository and fetch the pull request
 git clone "https://github.com/$OWNER/$REPOSITORY.git" .
 git remote add "$FORK_USER" "https://$FORK_USER:$FORK_TOKEN@github.com/$FORK_USER/$REPOSITORY.git"
+git checkout "$BASE_BRANCH"
 git checkout "$TARGET"
-git fetch origin "refs/pull/$PR_ID/head:original_pr"
-git checkout original_pr
 gh repo set-default "$GITHUB_REPOSITORY"
+
+# Obtain merged commits SHA
+MERGE_COMMITS=`git log --reverse --pretty=format:"%H - %s" -$PR_COMMITS_COUNT $PR_MERGE_COMMIT`
+MERGE_COMMITS_SHA=`git log --reverse --pretty=format:"%H" -$PR_COMMITS_COUNT $PR_MERGE_COMMIT`
+
+set +x
+echo ""
+echo "Base Branch Commits:"
+echo "$MERGE_COMMITS"
+echo ""
+set -x
 
 # Set git identity
 git config user.name "next-actions/backport"
@@ -75,7 +92,7 @@ git checkout -b "$BACKPORT_BRANCH_NAME" "$TARGET"
 
 # Apply cherry-picks even if there is a conflict
 has_conflict=0
-for commit in $PR_COMMITS_SHA; do
+for commit in $MERGE_COMMITS_SHA; do
     set +e
     git cherry-pick --allow-empty --allow-empty-message --empty=keep -x "$commit"
     ret=$?
@@ -101,7 +118,7 @@ git push --set-upstream "$FORK_USER" "$BACKPORT_BRANCH_NAME" --force
 
 # Prepare pull request message
 BACKPORT_COMMITS=`git log --format="* %H - %s" --reverse $TARGET..$BACKPORT_BRANCH_NAME`
-envlist='$PR_ID,$PR_URL,$PR_TITLE,$PR_URL,$PR_BODY,$PR_AUTHOR,$PR_COMMITS,$TARGET,$FORK_USER,$BACKPORT_BRANCH_NAME,$BACKPORT_COMMITS'
+envlist='$PR_ID,$PR_URL,$PR_TITLE,$PR_URL,$PR_BODY,$PR_AUTHOR,$PR_COMMITS,$MERGE_COMMITS,$TARGET,$FORK_USER,$BACKPORT_BRANCH_NAME,$BACKPORT_COMMITS'
 
 export PR_ID
 export PR_URL
