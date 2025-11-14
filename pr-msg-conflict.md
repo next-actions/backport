@@ -9,7 +9,7 @@ This is an automatic backport of [PR#$PR_ID $PR_TITLE]($PR_URL) to branch $TARGE
 git remote add $FORK_USER git@github.com:$FORK_USER/sssd.git
 git fetch $FORK_USER refs/heads/$BACKPORT_BRANCH_NAME
 git checkout $BACKPORT_BRANCH_NAME
-git push $FORK_USER $BACKPORT_BRANCH_NAME
+git push $FORK_USER $BACKPORT_BRANCH_NAME --force
 ```
 
 ---
