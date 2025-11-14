@@ -127,6 +127,7 @@ export PR_URL
 export PR_BODY
 export PR_AUTHOR
 export PR_COMMITS
+export MERGE_COMMITS
 export TARGET
 export FORK_USER
 export BACKPORT_BRANCH_NAME
