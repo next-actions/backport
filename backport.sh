@@ -91,6 +91,7 @@ git config user.email "notavailable"
 git checkout -b "$BACKPORT_BRANCH_NAME" "$TARGET"
 
 # Apply cherry-picks even if there is a conflict
+CONFLICT_INFORMATION=""
 has_conflict=0
 for commit in $MERGE_COMMITS_SHA; do
     set +e
@@ -101,6 +102,7 @@ for commit in $MERGE_COMMITS_SHA; do
         COMMIT_MESSAGE_TEMPLATE="$scriptdir/pr-msg-conflict.md"
         has_conflict=1
         echo "Conflicts detected, while cherry-picking $commit"
+        gitstatus=`git status`
         git add --all
 
         # Override the merge message
@@ -108,9 +110,19 @@ for commit in $MERGE_COMMITS_SHA; do
         merge_msg=`cat "$merge_msg_path"`
         echo "CONFLICT! $merge_msg" > "$merge_msg_path"
 
+        # Remember the conflict status
+        commit_subject=`head -1 "$merge_msg_path"`
+        CONFLICT_INFORMATION+="* $commit_subject\n"
+        CONFLICT_INFORMATION+="\`\`\`\n"
+        CONFLICT_INFORMATION+="$gitstatus"
+        CONFLICT_INFORMATION+="\`\`\`\n"
+        CONFLICT_INFORMATION+=""
+
+
         # Make sure to disable the interactive editor
         GIT_EDITOR=/usr/bin/true git cherry-pick --continue
     fi
+    CONFLICT_INFORMATION=`echo -e "$CONFLICT_INFORMATION"`
 done
 
 # Push backport to remote
@@ -118,7 +130,7 @@ git push --set-upstream "$FORK_USER" "$BACKPORT_BRANCH_NAME" --force
 
 # Prepare pull request message
 BACKPORT_COMMITS=`git log --format="* %H - %s" --reverse $TARGET..$BACKPORT_BRANCH_NAME`
-envlist='$PR_ID,$PR_URL,$PR_TITLE,$PR_URL,$PR_BODY,$PR_AUTHOR,$PR_COMMITS,$MERGE_COMMITS,$TARGET,$FORK_USER,$BACKPORT_BRANCH_NAME,$BACKPORT_COMMITS'
+envlist='$PR_ID,$PR_URL,$PR_TITLE,$PR_URL,$PR_BODY,$PR_AUTHOR,$PR_COMMITS,$MERGE_COMMITS,$TARGET,$FORK_USER,$BACKPORT_BRANCH_NAME,$BACKPORT_COMMITS,$CONFLICT_INFORMATION'
 
 export PR_ID
 export PR_URL
@@ -132,7 +144,10 @@ export TARGET
 export FORK_USER
 export BACKPORT_BRANCH_NAME
 export BACKPORT_COMMITS
+export CONFLICT_INFORMATION
 envsubst $envlist < $COMMIT_MESSAGE_TEMPLATE > .backport-commit-message
+
+cat .backport-commit-message
 
 # Add assignees and reviewers
 pr_create_args=""

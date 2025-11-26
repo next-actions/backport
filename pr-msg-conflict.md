@@ -20,6 +20,9 @@ $MERGE_COMMITS
 **Backported commits**
 $BACKPORT_COMMITS
 
+**Conflicting Files Information (check for deleted and re-added files)**
+$CONFLICT_INFORMATION
+
 ---
 
 **Original Pull Request Body**
