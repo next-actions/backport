@@ -114,7 +114,7 @@ for commit in $MERGE_COMMITS_SHA; do
         commit_subject=`head -1 "$merge_msg_path"`
         CONFLICT_INFORMATION+="* $commit_subject\n"
         CONFLICT_INFORMATION+="\`\`\`\n"
-        CONFLICT_INFORMATION+="$gitstatus"
+        CONFLICT_INFORMATION+="$gitstatus\n"
         CONFLICT_INFORMATION+="\`\`\`\n"
         CONFLICT_INFORMATION+=""
 
