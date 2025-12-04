@@ -8,7 +8,7 @@ Please make sure this backport is correct.
 **You can push changes to this pull request**
 
 ```
-git remote add $FORK_USER git@github.com:$FORK_USER/sssd.git
+git remote add $FORK_USER git@github.com:$FORK_USER/$REPOSITORY.git
 git fetch $FORK_USER refs/heads/$BACKPORT_BRANCH_NAME
 git checkout $BACKPORT_BRANCH_NAME
 git push $FORK_USER $BACKPORT_BRANCH_NAME --force
