@@ -103,6 +103,14 @@ for commit in $MERGE_COMMITS_SHA; do
         has_conflict=1
         echo "Conflicts detected, while cherry-picking $commit"
         gitstatus=`git status`
+
+        # Handle 'deleted by them' conflicts
+        echo "$gitstatus" | grep "deleted by them:" | while read -r line; do
+            filename=$(echo "$line" | sed 's/.*deleted by them://;s/^[[:space:]]*//')
+            echo "Removing file deleted by them: $filename"
+            git rm "$filename"
+        done
+
         git add --all
 
         # Override the merge message
@@ -120,7 +128,7 @@ for commit in $MERGE_COMMITS_SHA; do
 
 
         # Make sure to disable the interactive editor
-        GIT_EDITOR=/usr/bin/true git cherry-pick --continue
+        GIT_EDITOR=/usr/bin/true git cherry-pick --continue --allow-empty
     fi
     CONFLICT_INFORMATION=`echo -e "$CONFLICT_INFORMATION"`
 done
