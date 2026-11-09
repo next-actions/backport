@@ -27,6 +27,7 @@ PR_BODY=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json body --jq .body`
 PR_AUTHOR=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json author --jq .author.login`
 PR_REVIEWERS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json reviews --jq '.reviews.[] | select(.state == "APPROVED" and .authorAssociation != "NONE") | .author.login' | sort | uniq`
 PR_ASSIGNEES=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json assignees --jq .assignees.[].login`
+PR_LABELS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json labels --jq .labels.[].name`
 PR_COMMITS=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json commits --jq '.commits.[] | "* \(.oid) - \(.messageHeadline)"'`
 PR_COMMITS_COUNT=`echo "$PR_COMMITS" | wc -l`
 PR_MERGE_COMMIT=`gh pr view --repo "$OWNER/$REPOSITORY" "$PR_ID" --json mergeCommit --jq '.mergeCommit.oid'`
@@ -44,6 +45,7 @@ echo "GitHub Pull Request: $PR_URL"
 echo "Title: $PR_TITLE"
 echo "Author: $PR_AUTHOR"
 echo "Assignees: `echo $PR_ASSIGNEES | tr '\n' ' '`"
+echo "Labels: `echo $PR_LABELS | tr '\n' ' '`"
 echo "Reviewers: `echo $PR_REVIEWERS | tr '\n' ' '`"
 echo "Base Branch: $BASE_BRANCH"
 echo "Requesting Backport To: $TARGET"
@@ -157,6 +159,14 @@ pr_create_args+=`echo $PR_REVIEWERS | tr ' ' '\n' | xargs -I{} echo -n "--review
 if [ "$has_conflict" -eq 1 ]; then
     pr_create_args+="--draft "
 fi
+
+# Add labels
+echo "$PR_LABELS" | while IFS= read -r line; do
+    if [[ "$line" == "Tests" ]]; then
+        pr_create_args+="--label Tests "
+    fi
+done
+pr_create_args+="--label no-backport "
 
 gh pr create $pr_create_args \
     --base "$TARGET" \
